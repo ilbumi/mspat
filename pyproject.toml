@@ -1,15 +1,29 @@
 [project]
 name = "mspat"
-version = "0.1.0"
+dynamic = ["version"]
 description = "MultiScale Protein Analysis Toolkit"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "padata",
+dependencies = ["padata"]
+
+[dependency-groups]
+dev = [
+  "jupyter>=1.1.1",
+  "pre-commit>=4.2.0",
+  "mypy==1.15.0",
+  "ruff==0.11.11",
+  "ssort==0.14.0",
+  "sphinx>=8.2.3",
+  "coverage[toml]>=7.8.1",
+  "pytest-cov>=6.1.1",
+  "pytest-xdist>=3.6.1",
+  "pytest-mock>=3.14.0",
+  "myst-parser>=4.0.1",
+  "sphinx-autodoc-typehints>=3.2.0",
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
 
 [tool.uv.workspace]
@@ -18,6 +32,17 @@ members = ["packages/*"]
 [tool.uv.sources]
 padata = { workspace = true }
 
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
 
 ###########
 # Linting #
@@ -34,89 +59,71 @@ exclude = ["tests"]
 line-length = 120
 target-version = "py312"
 lint.select = [
-    "ALL", # include all the rules, including new ones
+  "ALL", # include all the rules, including new ones
 ]
 lint.ignore = [
-    "ANN", # flake8-annotations
-    "D100",   # ignore missing docs
-    "D101",
-    "D203",  # ignore no blank lines before class docstring
-    "D213",  # multi-line docstring summary should start at the second line
-    "COM812",  # ignore missing blank line after last section
-    "FBT001",  # ignore boolean arguments
-    "FBT002",
-    "TD",  # ignore TODOs
-    "FIX002",  # ignore TODOs
-    "PLR0913",  # ignore too many arguments
+  "ANN",     # flake8-annotations
+  "D100",    # ignore missing docs
+  "D101",
+  "D203",    # ignore no blank lines before class docstring
+  "D213",    # multi-line docstring summary should start at the second line
+  "COM812",  # ignore missing blank line after last section
+  "FBT001",  # ignore boolean arguments
+  "FBT002",
+  "TD",      # ignore TODOs
+  "FIX002",  # ignore TODOs
+  "PLR0913", # ignore too many arguments
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = [
-    "D104",  # ignore missing docs
+  "D104", # ignore missing docs
 ]
 "scripts/**/*.py" = [
-    "T201",  # ignore prints
-    "PGH003", # allow unspecified type ignores
-    "INP001", # ignore missing __init__.py
+  "T201",   # ignore prints
+  "PGH003", # allow unspecified type ignores
+  "INP001", # ignore missing __init__.py
 ]
 "tests/**/*.py" = [
-    "D100",  # ignore missing docs
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D105",
-    "D107",
-    "ANN",   # flake8-annotations
-    "S101",  # ignore asserts
-    "PLR2004",  # ignore magic values
-    "PD901",  # allow df as variable name
-    "SLF001", # private method accessed outside of class
-    "PGH003", # allow unspecified type ignores
+  "D100",    # ignore missing docs
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D107",
+  "ANN",     # flake8-annotations
+  "S101",    # ignore asserts
+  "PLR2004", # ignore magic values
+  "PD901",   # allow df as variable name
+  "SLF001",  # private method accessed outside of class
+  "PGH003",  # allow unspecified type ignores
 ]
 "packages/agat/**/*.py" = [
-    "D100",  # ignore missing docs
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D105",
-    "D107",
-    "D400",
-    "D415",
-    "ANN",   # flake8-annotations
-    "S101",  # ignore asserts
-    "PLR2004",  # ignore magic values
-    "PLR0913",
-    "PD901",  # allow df as variable name
-    "G004", # ignore logging with f-strings
+  "D100",    # ignore missing docs
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D107",
+  "D400",
+  "D415",
+  "ANN",     # flake8-annotations
+  "S101",    # ignore asserts
+  "PLR2004", # ignore magic values
+  "PLR0913",
+  "PD901",   # allow df as variable name
+  "G004",    # ignore logging with f-strings
 ]
-"packages/anarci/**/*.py" = [  # vendored package
-    "ALL"
+"packages/anarci/**/*.py" = [ # vendored package
+  "ALL",
 ]
 "*.ipynb" = [
-    "D",
-    "ANN",   # flake8-annotations
-    "S101",  # ignore asserts
-    "PLR2004",  # ignore magic values
-    "PD901",  # allow df as variable name
+  "D",
+  "ANN",     # flake8-annotations
+  "S101",    # ignore asserts
+  "PLR2004", # ignore magic values
+  "PD901",   # allow df as variable name
 ]
-"docs/conf.py" = [
-    "ALL"
-]
-
-[dependency-groups]
-dev = [
-    "jupyter>=1.1.1",
-    "pre-commit>=4.2.0",
-    "mypy==1.15.0",
-    "ruff==0.11.11",
-    "ssort==0.14.0",
-    "sphinx>=8.2.3",
-    "coverage[toml]>=7.8.1",
-    "pytest-cov>=6.1.1",
-    "pytest-xdist>=3.6.1",
-    "pytest-mock>=3.14.0",
-    "myst-parser>=4.0.1",
-    "sphinx-autodoc-typehints>=3.2.0",
-]
+"docs/conf.py" = ["ALL"]
