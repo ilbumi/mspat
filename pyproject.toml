@@ -105,7 +105,8 @@ lint.ignore = [
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1",
-    "mypy>=1.15.0",
     "pre-commit>=4.2.0",
-    "ruff>=0.11.10",
+    "mypy==1.15.0",
+    "ruff==0.11.11",
+    "ssort==0.14.0",
 ]
