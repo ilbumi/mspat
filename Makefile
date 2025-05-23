@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 SHELL=bash
-CODE_PATHS=packages/ scripts/
+CODE_PATHS=packages/
 TESTS_PATH=tests/
 
 .PHONY: test
