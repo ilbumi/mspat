@@ -101,6 +101,9 @@ lint.ignore = [
     "PLR2004",  # ignore magic values
     "PD901",  # allow df as variable name
 ]
+"docs/conf.py" = [
+    "ALL"
+]
 
 [dependency-groups]
 dev = [
@@ -109,4 +112,11 @@ dev = [
     "mypy==1.15.0",
     "ruff==0.11.11",
     "ssort==0.14.0",
+    "sphinx>=8.2.3",
+    "coverage[toml]>=7.8.1",
+    "pytest-cov>=6.1.1",
+    "pytest-xdist>=3.6.1",
+    "pytest-mock>=3.14.0",
+    "myst-parser>=4.0.1",
+    "sphinx-autodoc-typehints>=3.2.0",
 ]
