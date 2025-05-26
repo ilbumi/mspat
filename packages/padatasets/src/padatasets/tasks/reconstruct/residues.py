@@ -25,13 +25,18 @@ def _get_first_array(structure: Any) -> AtomArray:
 
 
 def get_atom_features(structure: AtomArray) -> torch.Tensor:
-    """Get atom features from an AtomArray."""
+    """Get atom features from an AtomArray.
+
+    The features include:
+    - Atom name index
+    - Residue index
+    - Chain index (0-based, A=0, B=1, etc.)
+    """
     features = torch.zeros((len(structure), 4), dtype=torch.int64)
     for i, atom_name in enumerate(structure.atom_name):
         features[i, 0] = ATOM_NAMES_TO_INDEX.get(atom_name, ATOM_NAMES_TO_INDEX["X"])
         features[i, 1] = RESIDUE_TO_INDEX[RESIDUE_3_TO_1.get(structure.res_name[i], "X")]
         features[i, 2] = ord(structure.chain_id[i][0].upper()) - 65
-        features[i, 3] = ord(structure.chain_id[i][0].upper()) - 65
     return features
 
 
