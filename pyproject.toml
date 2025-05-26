@@ -4,7 +4,10 @@ dynamic = ["version"]
 description = "MultiScale Protein Analysis Toolkit"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["padata"]
+dependencies = [
+    "padata",
+    "padatasets",
+]
 
 [dependency-groups]
 dev = [
@@ -32,6 +35,7 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 padata = { workspace = true }
+padatasets = { workspace = true }
 
 [tool.uv-dynamic-versioning]
 fallback-version = "0.0.0"
