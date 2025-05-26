@@ -1,0 +1,20 @@
+[project]
+name = "padatasets"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Ilia Bushmakin", email = "im.bushmakin@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "loguru>=0.7.3",
+    "padata",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+padata = { workspace = true }
