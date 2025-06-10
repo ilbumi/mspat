@@ -64,5 +64,5 @@ class TokenTaskProteinStructure:
         features = torch.nn.utils.rnn.pad_sequence([b.features for b in batch], batch_first=True)
         masks = torch.nn.utils.rnn.pad_sequence([b.mask for b in batch], batch_first=True)
         edges = pad_matrix([b.edges for b in batch], padding_value=0, padding_side="right")
-        targets = torch.nn.utils.rnn.pad_sequence([b.target for b in batch], batch_first=True)
-        return cls(coords=coords, features=features, edges=edges, mask=masks, target=targets)  # type: ignore[call-arg]
+        target = torch.nn.utils.rnn.pad_sequence([b.target for b in batch], batch_first=True)
+        return cls(coords=coords, features=features, edges=edges, mask=masks, target=target)  # type: ignore[call-arg]

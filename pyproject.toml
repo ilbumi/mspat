@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "padata",
     "padatasets",
+    "biocontacts",
 ]
 
 [dependency-groups]
@@ -36,6 +37,7 @@ members = ["packages/*"]
 [tool.uv.sources]
 padata = { workspace = true }
 padatasets = { workspace = true }
+biocontacts = { workspace = true }
 
 [tool.uv-dynamic-versioning]
 fallback-version = "0.0.0"

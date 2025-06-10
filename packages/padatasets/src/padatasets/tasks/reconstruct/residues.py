@@ -45,6 +45,7 @@ def construct_residue_reconstruction_data(structure: AtomArray) -> TokenTaskProt
     return TokenTaskProteinStructure(
         coords=torch.Tensor(structure.coord),  # type: ignore[call-arg]
         features=get_atom_features(structure),  # type: ignore[call-arg]
+        edges=torch.zeros((1, len(structure), len(structure), 0), dtype=torch.int64),  # type: ignore[call-arg]
     )
 
 
