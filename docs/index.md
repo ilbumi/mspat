@@ -26,5 +26,6 @@ pip install git+https://github.com/ilbumi/mspat.git@master
 :caption: Components
 :hidden:
 
+architecture
 padata
 ```
