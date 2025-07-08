@@ -106,24 +106,7 @@ lint.ignore = [
   "SLF001",  # private method accessed outside of class
   "PGH003",  # allow unspecified type ignores
 ]
-"packages/agat/**/*.py" = [
-  "D100",    # ignore missing docs
-  "D101",
-  "D102",
-  "D103",
-  "D104",
-  "D105",
-  "D107",
-  "D400",
-  "D415",
-  "ANN",     # flake8-annotations
-  "S101",    # ignore asserts
-  "PLR2004", # ignore magic values
-  "PLR0913",
-  "PD901",   # allow df as variable name
-  "G004",    # ignore logging with f-strings
-]
-"packages/anarci/**/*.py" = [ # vendored package
+"packages/osif/**/*.py" = [ # vendored package
   "ALL",
 ]
 "*.ipynb" = [
