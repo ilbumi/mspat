@@ -16,4 +16,4 @@ def test_root_path() -> Path:
 @pytest.fixture
 def structure_preprocessor() -> BaseTransform:
     """Preprocess protein structure."""
-    return ComposeTransform([AddResidueBonds(), ProtonateStructure()])
+    return ComposeTransform([AddResidueBonds(), ProtonateStructure(ignore_warnings=True)])

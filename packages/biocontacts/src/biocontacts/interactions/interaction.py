@@ -193,28 +193,31 @@ class PiStackingInteraction(BaseInteraction):
     @cached_property
     def plane_angle(self) -> float:
         """Get angle."""
-        return float(to_acute(get_angle_between_vectors(*self.normal_vectors)))
+        x = to_acute(get_angle_between_vectors(*self.normal_vectors))
+        if isinstance(x, np.ndarray):
+            return float(x[0])
+        return float(x)
 
     @cached_property
     def shift_angle(self) -> float:
         """Get angle."""
-        return float(
-            (
-                to_acute(
-                    get_angle_between_vectors(
-                        self.normal_vectors[0],
-                        self.centers[0] - self.centers[1],
-                    )
-                )
-                + to_acute(
-                    get_angle_between_vectors(
-                        self.normal_vectors[1],
-                        self.centers[0] - self.centers[1],
-                    )
+        x = (
+            to_acute(
+                get_angle_between_vectors(
+                    self.normal_vectors[0],
+                    self.centers[0] - self.centers[1],
                 )
             )
-            / 2
-        )
+            + to_acute(
+                get_angle_between_vectors(
+                    self.normal_vectors[1],
+                    self.centers[0] - self.centers[1],
+                )
+            )
+        ) / 2
+        if isinstance(x, np.ndarray):
+            return float(x[0])
+        return float(x)
 
     @cached_property
     def energy(self) -> float:
@@ -426,7 +429,10 @@ class CationPiInteraction(BaseInteraction):
     @cached_property
     def angle(self) -> float:
         """Get angle."""
-        return float(to_acute(get_angle_between_vectors(self.normal_vector, self.centers[0] - self.centers[1])))
+        x = to_acute(get_angle_between_vectors(self.normal_vector, self.centers[0] - self.centers[1]))
+        if isinstance(x, np.ndarray):
+            return float(x[0])
+        return float(x)
 
     @property
     def features(self) -> np.ndarray:
