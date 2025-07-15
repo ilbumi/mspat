@@ -1,7 +1,7 @@
 [project]
 name = "padatasets"
 version = "0.1.0"
-description = "Add your description here"
+description = "Datasets for protein structure prediction and analysis"
 readme = "README.md"
 authors = [
     { name = "Ilia Bushmakin", email = "im.bushmakin@gmail.com" }
