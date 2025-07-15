@@ -8,6 +8,8 @@ import torch
 from biotite.structure import AtomArray, BondList
 from padata.io import read_cif_file
 from padata.tensorclasses.structure import TokenTaskProteinStructure
+from padata.transform.compose import ComposeTransform
+from padata.transform.mask import MaskSpans, RemoveMaskedSideChains
 from padata.vocab.residue import ATOM_NAMES_TO_INDEX, RESIDUE_TO_INDEX
 from padatasets.tasks.reconstruct.residues import (
     construct_residue_reconstruction_data,
@@ -81,6 +83,7 @@ def test_construct_residue_reconstruction_data():
     atom_array.res_name = np.array(["GLY", "ALA"])
     atom_array.chain_id = np.array(["A", "A"])
     atom_array.bonds = BondList(2, np.array([(0, 1)]))
+    atom_array.mask = np.array([True, True])
 
     result = construct_residue_reconstruction_data(atom_array)
 
@@ -167,13 +170,22 @@ def test_construct_residue_reconstruction_data_with_real_structure(test_root: Pa
     """Test construct_residue_reconstruction_data with real structure data."""
     cif_file = test_root / "data" / "3nzz.cif.gz"
     structure = get_first_array(read_cif_file(cif_file, model=None, altloc="first", include_bonds=True))
-
-    result = construct_residue_reconstruction_data(structure)
+    transform = ComposeTransform(
+        [
+            MaskSpans(
+                num_spans=(1, 6),
+                span_length=(1, 25),
+                random_seed=42,
+            ),
+            RemoveMaskedSideChains(),
+        ]
+    )
+    result = construct_residue_reconstruction_data(transform.transform(structure))
 
     assert isinstance(result, TokenTaskProteinStructure)
-    assert result.coords.shape[0] == len(structure)
-    assert result.features.shape == (len(structure), 4)
-    assert result.edges.shape == (1, len(structure), len(structure), 1)
+    assert result.coords.shape[0] < len(structure)
+    assert result.features.shape == (result.coords.shape[0], 4)
+    assert result.edges.shape == (1, result.coords.shape[0], result.coords.shape[0], 1)
     assert torch.all(result.features[:, 0] >= 0)  # Valid atom indices
     assert torch.all(result.features[:, 1] >= 0)  # Valid residue indices
     assert torch.all(result.features[:, 2] >= 0)  # Valid chain indices

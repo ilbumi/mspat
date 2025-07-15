@@ -9,6 +9,8 @@ from loguru import logger
 from padata.io import read_cif_file
 from padata.tensorclasses.structure import TokenTaskProteinStructure
 from padata.transform.base import BaseTransform
+from padata.transform.compose import ComposeTransform
+from padata.transform.mask import MaskSpans, RemoveMaskedSideChains
 from padata.vocab.residue import ATOM_NAMES_TO_INDEX, RESIDUE_3_TO_1, RESIDUE_TO_INDEX
 
 
@@ -48,7 +50,7 @@ def construct_residue_reconstruction_data(structure: AtomArray) -> TokenTaskProt
         coords=torch.Tensor(structure.coord),  # type: ignore[call-arg]
         features=get_atom_features(structure),  # type: ignore[call-arg]
         edges=torch.from_numpy(structure.bonds.adjacency_matrix().astype(np.int64)).unsqueeze(0).unsqueeze(-1),  # type: ignore[call-arg]
-        mask=torch.ones((1, len(structure)), dtype=torch.bool),  # type: ignore[call-arg]
+        mask=torch.from_numpy(structure.mask).unsqueeze(0),  # type: ignore[call-arg]
         target=torch.tensor(
             [RESIDUE_TO_INDEX.get(RESIDUE_3_TO_1.get(x)) or RESIDUE_TO_INDEX["X"] for x in structure.res_name],
             dtype=torch.int64,
@@ -56,8 +58,37 @@ def construct_residue_reconstruction_data(structure: AtomArray) -> TokenTaskProt
     )
 
 
-def load_cifs(folder: Path, structure_preprocessor: BaseTransform | None = None) -> Iterator[TokenTaskProteinStructure]:
+def load_cifs(
+    folder: Path,
+    structure_preprocessor: BaseTransform | None = None,
+    num_spans: tuple[int, int] = (1, 6),
+    span_length: tuple[int, int] = (1, 25),
+    random_seed: int = 1337,
+) -> Iterator[TokenTaskProteinStructure]:
     """Load CIF files from a folder and yield TokenTaskProteinStructure objects."""
+    if structure_preprocessor is None:
+        structure_preprocessor = ComposeTransform(
+            [
+                MaskSpans(
+                    num_spans=num_spans,
+                    span_length=span_length,
+                    random_seed=random_seed,
+                ),
+                RemoveMaskedSideChains(),
+            ]
+        )
+    else:
+        structure_preprocessor = ComposeTransform(
+            [
+                structure_preprocessor,
+                MaskSpans(
+                    num_spans=num_spans,
+                    span_length=span_length,
+                    random_seed=random_seed,
+                ),
+                RemoveMaskedSideChains(),
+            ]
+        )
     for cif_file in folder.glob("*.cif.gz"):
         try:
             structure = get_first_array(
@@ -69,8 +100,7 @@ def load_cifs(folder: Path, structure_preprocessor: BaseTransform | None = None)
                     include_bonds=True,
                 )
             )
-            if structure_preprocessor is not None:
-                structure = get_first_array(structure_preprocessor.transform(structure))
+            structure = get_first_array(structure_preprocessor.transform(structure))
         except TypeError as err:
             logger.opt(exception=err).warning(f"Failed to extract a structure {cif_file}, skipping.")
         except OSError as err:
