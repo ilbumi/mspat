@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 from biotite.structure import AtomArray, AtomArrayStack
 from loguru import logger
@@ -11,7 +12,8 @@ from padata.transform.base import BaseTransform
 from padata.vocab.residue import ATOM_NAMES_TO_INDEX, RESIDUE_3_TO_1, RESIDUE_TO_INDEX
 
 
-def _get_first_array(structure: Any) -> AtomArray:
+def get_first_array(structure: Any) -> AtomArray:
+    """Get the first AtomArray from a structure or raise an error if not found."""
     if isinstance(structure, AtomArray):
         return structure
     if isinstance(structure, AtomArrayStack):
@@ -45,7 +47,12 @@ def construct_residue_reconstruction_data(structure: AtomArray) -> TokenTaskProt
     return TokenTaskProteinStructure(
         coords=torch.Tensor(structure.coord),  # type: ignore[call-arg]
         features=get_atom_features(structure),  # type: ignore[call-arg]
-        edges=torch.zeros((1, len(structure), len(structure), 0), dtype=torch.int64),  # type: ignore[call-arg]
+        edges=torch.from_numpy(structure.bonds.adjacency_matrix().astype(np.int64)).unsqueeze(0).unsqueeze(-1),  # type: ignore[call-arg]
+        mask=torch.ones((1, len(structure)), dtype=torch.bool),  # type: ignore[call-arg]
+        target=torch.tensor(
+            [RESIDUE_TO_INDEX.get(RESIDUE_3_TO_1.get(x)) or RESIDUE_TO_INDEX["X"] for x in structure.res_name],
+            dtype=torch.int64,
+        ).reshape(1, -1, 1),
     )
 
 
@@ -53,18 +60,20 @@ def load_cifs(folder: Path, structure_preprocessor: BaseTransform | None = None)
     """Load CIF files from a folder and yield TokenTaskProteinStructure objects."""
     for cif_file in folder.glob("*.cif.gz"):
         try:
-            structure = _get_first_array(
+            structure = get_first_array(
                 read_cif_file(
                     cif_file,
                     model=None,
                     altloc="first",
-                    extra_fields=None,
+                    extra_fields=["charge"],
                     include_bonds=True,
                 )
             )
             if structure_preprocessor is not None:
-                structure = _get_first_array(structure_preprocessor.transform(structure))
+                structure = get_first_array(structure_preprocessor.transform(structure))
         except TypeError as err:
             logger.opt(exception=err).warning(f"Failed to extract a structure {cif_file}, skipping.")
+        except OSError as err:
+            logger.opt(exception=err).warning(f"Failed to read {cif_file}, skipping.")
         else:
             yield construct_residue_reconstruction_data(structure)
