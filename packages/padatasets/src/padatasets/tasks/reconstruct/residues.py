@@ -11,7 +11,7 @@ from padata.tensorclasses.structure import TokenTaskProteinStructure
 from padata.transform.base import BaseTransform
 from padata.transform.compose import ComposeTransform
 from padata.transform.mask import MaskSpans, RemoveMaskedSideChains
-from padata.vocab.residue import ATOM_NAMES_TO_INDEX, RESIDUE_3_TO_1, RESIDUE_TO_INDEX
+from padata.vocab.residue import ATOM_NAMES_TO_INDEX, MASK_TOKEN, RESIDUE_3_TO_1, RESIDUE_TO_INDEX
 
 
 def get_first_array(structure: Any) -> AtomArray:
@@ -36,11 +36,13 @@ def get_atom_features(structure: AtomArray) -> torch.Tensor:
     - Residue index
     - Chain index (0-based, A=0, B=1, etc.)
     """
-    features = torch.zeros((len(structure), 4), dtype=torch.int64)
+    features = torch.zeros((len(structure), 3), dtype=torch.int64)
     for i, atom_name in enumerate(structure.atom_name):
         features[i, 0] = ATOM_NAMES_TO_INDEX.get(atom_name, ATOM_NAMES_TO_INDEX["X"])
         features[i, 1] = RESIDUE_TO_INDEX[RESIDUE_3_TO_1.get(structure.res_name[i], "X")]
         features[i, 2] = ord(structure.chain_id[i][0].upper()) - 65
+    # mask residues
+    features[~structure.mask, 1] = RESIDUE_TO_INDEX[MASK_TOKEN]
     return features
 
 
@@ -52,7 +54,7 @@ def construct_residue_reconstruction_data(structure: AtomArray) -> TokenTaskProt
         edges=torch.from_numpy(structure.bonds.adjacency_matrix().astype(np.int64)).unsqueeze(0).unsqueeze(-1),  # type: ignore[call-arg]
         mask=torch.from_numpy(structure.mask).unsqueeze(0),  # type: ignore[call-arg]
         target=torch.tensor(
-            [RESIDUE_TO_INDEX.get(RESIDUE_3_TO_1.get(x)) or RESIDUE_TO_INDEX["X"] for x in structure.res_name],
+            [RESIDUE_TO_INDEX.get(RESIDUE_3_TO_1.get(x) or "X") for x in structure.res_name],
             dtype=torch.int64,
         ).reshape(1, -1, 1),
     )

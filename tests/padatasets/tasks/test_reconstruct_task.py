@@ -10,7 +10,7 @@ from padata.io import read_cif_file
 from padata.tensorclasses.structure import TokenTaskProteinStructure
 from padata.transform.compose import ComposeTransform
 from padata.transform.mask import MaskSpans, RemoveMaskedSideChains
-from padata.vocab.residue import ATOM_NAMES_TO_INDEX, RESIDUE_TO_INDEX
+from padata.vocab.residue import ATOM_NAMES_TO_INDEX, MASK_TOKEN, RESIDUE_TO_INDEX
 from padatasets.tasks.reconstruct.residues import (
     construct_residue_reconstruction_data,
     get_atom_features,
@@ -39,13 +39,16 @@ def test_get_atom_features():
     atom_array.atom_name = np.array(["CA", "CB", "N"])
     atom_array.res_name = np.array(["ALA", "GLY", "VAL"])
     atom_array.chain_id = np.array(["A", "A", "B"])
+    atom_array.mask = np.array([True, False, True])  # Mask GLY
 
     features = get_atom_features(atom_array)
 
-    assert features.shape == (3, 4)
+    assert features.shape == (3, 3)
     assert features.dtype == torch.int64
     assert features[0, 2] == 0  # Chain A = 0
     assert features[2, 2] == 1  # Chain B = 1
+    assert features[0, 1] == RESIDUE_TO_INDEX["A"]
+    assert features[1, 1] == RESIDUE_TO_INDEX[MASK_TOKEN]
 
 
 def test_get_atom_features_with_unknown_atom():
@@ -54,6 +57,7 @@ def test_get_atom_features_with_unknown_atom():
     atom_array.atom_name = ["UNKNOWN"]
     atom_array.res_name = ["ALA"]
     atom_array.chain_id = ["A"]
+    atom_array.mask = np.array([True])
 
     features = get_atom_features(atom_array)
 
@@ -68,6 +72,7 @@ def test_get_atom_features_with_unknown_residue():
     atom_array.atom_name = ["CA"]
     atom_array.res_name = ["UNK"]
     atom_array.chain_id = ["A"]
+    atom_array.mask = np.array([True])
 
     features = get_atom_features(atom_array)
 
@@ -89,7 +94,7 @@ def test_construct_residue_reconstruction_data():
 
     assert isinstance(result, TokenTaskProteinStructure)
     assert result.coords.shape == (2, 3)
-    assert result.features.shape == (2, 4)
+    assert result.features.shape == (2, 3)
     assert result.edges.shape == (1, 2, 2, 1)
     assert torch.allclose(result.coords, torch.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))
 
@@ -157,6 +162,7 @@ def test_chain_id_conversion():
     atom_array.atom_name = ["CA", "CA", "CA", "CA"]
     atom_array.res_name = ["ALA", "ALA", "ALA", "ALA"]
     atom_array.chain_id = ["A", "B", "C", "Z"]
+    atom_array.mask = np.array([True, True, True, True])  # All atoms are valid
 
     features = get_atom_features(atom_array)
 
@@ -184,7 +190,7 @@ def test_construct_residue_reconstruction_data_with_real_structure(test_root: Pa
 
     assert isinstance(result, TokenTaskProteinStructure)
     assert result.coords.shape[0] < len(structure)
-    assert result.features.shape == (result.coords.shape[0], 4)
+    assert result.features.shape == (result.coords.shape[0], 3)
     assert result.edges.shape == (1, result.coords.shape[0], result.coords.shape[0], 1)
     assert torch.all(result.features[:, 0] >= 0)  # Valid atom indices
     assert torch.all(result.features[:, 1] >= 0)  # Valid residue indices
