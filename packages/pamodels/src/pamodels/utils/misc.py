@@ -4,13 +4,6 @@ import torch
 import torch.nn.functional as func
 from torch import nn
 
-# helper functions
-
-
-def exists(val: Any) -> bool:
-    """Check if a value exists (is not None)."""
-    return val is not None
-
 
 def max_neg_value(t) -> float:
     """Return the maximum negative value for a given tensor type."""
@@ -19,7 +12,7 @@ def max_neg_value(t) -> float:
 
 def default(val: Any, d: Any) -> Any:
     """Return the default value if the given value does not exist."""
-    return val if exists(val) else d
+    return val if (val is not None) else d
 
 
 def l2norm(t: torch.Tensor) -> torch.Tensor:

@@ -14,7 +14,7 @@ from pamodels.modules.multiembeddings import MultiEmbedding
 from pamodels.modules.norm import LayerNorm
 from pamodels.structure.base import BaseAtomTransformer
 from pamodels.structure.common import Block, CoorsNorm, FeedForward, Residual
-from pamodels.utils.misc import default, exists, max_neg_value, small_init_
+from pamodels.utils.misc import default, max_neg_value, small_init_
 
 
 class DynamicPositionBias(nn.Module):
@@ -33,7 +33,7 @@ class DynamicPositionBias(nn.Module):
 
         """
         super().__init__()
-        assert depth >= 1, "depth for dynamic position bias MLP must be greater or equal to 1"  # noqa: S101
+        assert depth >= 1, "depth for dynamic position bias MLP must be greater or equal to 1"
         self.mlp = nn.ModuleList([])
 
         self.mlp.append(
@@ -193,7 +193,7 @@ class EquivariantAttention(nn.Module):
     def init_(self, module: nn.Module) -> None:
         """Initialize the module weights."""
         if type(module) in {nn.Linear}:
-            nn.init.normal_(module.weight, std=self.init_eps)
+            nn.init.normal_(module.weight, std=self.init_eps)  # type: ignore[arg-type]
 
     def forward(  # noqa: C901, PLR0912, PLR0915
         self,
@@ -216,7 +216,7 @@ class EquivariantAttention(nn.Module):
         _mask = mask
         feats = self.norm(feats)
 
-        assert not (only_sparse_neighbors and not exists(adj_mat)), (  # noqa: S101
+        assert not (only_sparse_neighbors and not (adj_mat is not None)), (
             "adjacency matrix must be passed in if only_sparse_neighbors is turned on"
         )
 
@@ -229,7 +229,7 @@ class EquivariantAttention(nn.Module):
         nbhd_masks = None
         nbhd_ranking = rel_dist.clone()
 
-        if exists(adj_mat):
+        if adj_mat is not None:
             if len(adj_mat.shape) == 2:  # noqa: PLR2004
                 adj_mat = repeat(adj_mat, "i j -> b i j", b=b)
 
@@ -237,7 +237,7 @@ class EquivariantAttention(nn.Module):
             self_mask = rearrange(self_mask, "i j -> 1 i j")
             adj_mat.masked_fill_(self_mask, False)  # noqa: FBT003
 
-            max_adj_neighbors = adj_mat.long().sum(dim=-1).max().item() + 1
+            max_adj_neighbors = int(adj_mat.long().sum(dim=-1).max().item() + 1)
 
             num_nn = max_adj_neighbors if only_sparse_neighbors else (num_nn + max_adj_neighbors)
             valid_neighbor_radius = 0 if only_sparse_neighbors else valid_neighbor_radius
@@ -247,7 +247,7 @@ class EquivariantAttention(nn.Module):
 
         if 0 < num_nn < n:
             # make sure padding does not end up becoming neighbors
-            if exists(mask):
+            if mask is not None:
                 ranking_mask = mask[:, :, None] * mask[:, None, :]
                 nbhd_ranking = nbhd_ranking.masked_fill(~ranking_mask, 1e5)
 
@@ -268,7 +268,7 @@ class EquivariantAttention(nn.Module):
 
         i = j = n
 
-        if exists(nbhd_indices):
+        if nbhd_indices is not None:
             i, j = nbhd_indices.shape[-2:]
             k = get_at("b h [j] d, b i k -> b h i k d", k, nbhd_indices)
             v = get_at("b h [j] d, b i k -> b h i k d", v, nbhd_indices)
@@ -280,15 +280,15 @@ class EquivariantAttention(nn.Module):
 
         # prepare mask
 
-        if exists(mask):
+        if mask is not None:
             q_mask = rearrange(mask, "b i -> b 1 i 1")
 
-            if exists(nbhd_indices):
+            if nbhd_indices is not None:
                 k_mask = get_at("b [j], b i k -> b 1 i k", mask, nbhd_indices)
 
             mask = q_mask * k_mask
 
-            if exists(nbhd_masks):
+            if nbhd_masks is not None:
                 mask &= rearrange(nbhd_masks, "b i j -> b 1 i j")
 
         # generate and apply rotary embeddings
@@ -298,7 +298,7 @@ class EquivariantAttention(nn.Module):
 
         if self.rel_pos_emb:
             seq = torch.arange(n, device=device, dtype=q.dtype)
-            seq_target_pos = nbhd_indices if exists(nbhd_indices) else rearrange(seq, "j -> 1 1 j")
+            seq_target_pos = nbhd_indices if (nbhd_indices is not None) else rearrange(seq, "j -> 1 1 j")
             seq_rel_dist = rearrange(seq, "i -> 1 i 1") - seq_target_pos
             seq_rel_dist = repeat(seq_rel_dist, "b i j -> b 1 i j 1", b=b)
             rel_dist = torch.cat((rel_dist, seq_rel_dist), dim=-1)
@@ -312,7 +312,7 @@ class EquivariantAttention(nn.Module):
         # l2 distance
         # -cdist(q, k).pow(2)  # noqa: ERA001
 
-        qk = -((q - k) ** 2).sum(dim=-1)
+        qk: torch.Tensor = -((q - k) ** 2).sum(dim=-1)
 
         qk = qk * self.scale
 
@@ -324,12 +324,12 @@ class EquivariantAttention(nn.Module):
 
         # add edge information and pass through edges MLP if needed
 
-        if exists(edges):
-            if exists(nbhd_indices):
+        if (edges is not None) and (self.edge_mlp is not None):
+            if nbhd_indices is not None:
                 edges = get_at("b i [j] d, b i k -> b i k d", edges, nbhd_indices)
 
             qk = rearrange(qk, "b h i j -> b i j h")
-            qk = torch.cat((qk, edges), dim=-1)
+            qk = torch.cat((qk, edges), dim=-1)  # type: ignore[arg-type]
             qk = self.edge_mlp(qk)
             qk = rearrange(qk, "b i j h -> b h i j")
 
@@ -338,7 +338,7 @@ class EquivariantAttention(nn.Module):
         coors_mlp_input = rearrange(qk, "b h i j -> b i j h")
         coor_weights = self.coors_mlp(coors_mlp_input)
 
-        if exists(mask):
+        if mask is not None:
             mask_value = max_neg_value(coor_weights)
             coor_mask = repeat(mask, "b 1 i j -> b i j 1")
             coor_weights.masked_fill_(~coor_mask, mask_value)
@@ -385,7 +385,7 @@ class EquivariantAttention(nn.Module):
                 cross_weights_j, "b n j h -> b n 1 j h"
             )
 
-            if exists(mask):
+            if mask is not None:
                 cross_mask = coor_mask[:, :, :, None, :] & coor_mask[:, :, None, :, :]
                 cross_weights = cross_weights.masked_fill(~cross_mask, mask_value)
 
@@ -409,14 +409,14 @@ class EquivariantAttention(nn.Module):
 
         sim = qk.clone()
 
-        if exists(mask):
+        if mask is not None:
             mask_value = max_neg_value(sim)
             sim.masked_fill_(~mask, mask_value)
 
         attn = sim.softmax(dim=-1)
         attn = self.node_dropout(attn)
 
-        if exists(self.talking_heads):
+        if self.talking_heads is not None:
             attn = self.talking_heads(attn)
 
         # weighted sum of values and combine heads
@@ -474,22 +474,24 @@ class EnTransformer(BaseAtomTransformer):
     ) -> None:
         """Initialize the EnTransformer module."""
         super().__init__()
-        assert dim_head >= 32, "your dimension per head should be greater than 32 for rotary embeddings to work well"  # noqa: PLR2004, S101
-        assert not (exists(num_adj_degrees) and num_adj_degrees < 1), "make sure adjacent degrees is greater than 1"  # noqa: S101
+        assert dim_head >= 32, "your dimension per head should be greater than 32 for rotary embeddings to work well"  # noqa: PLR2004
+        assert not ((num_adj_degrees is not None) and num_adj_degrees < 1), (
+            "make sure adjacent degrees is greater than 1"
+        )
 
         if only_sparse_neighbors:
             num_adj_degrees = default(num_adj_degrees, 1)
 
-        self.token_emb: MultiEmbedding | None = MultiEmbedding(num_tokens, dim) if exists(num_tokens) else None
+        self.token_emb: MultiEmbedding | None = MultiEmbedding(num_tokens, dim) if (num_tokens is not None) else None
         self.edge_emb: nn.Embedding | None = (
-            nn.Embedding(num_edge_tokens, edge_dim) if exists(num_edge_tokens) else None
+            nn.Embedding(num_edge_tokens, edge_dim) if (num_edge_tokens is not None) else None
         )
 
         self.num_adj_degrees: int | None = num_adj_degrees
         self.adj_emb: nn.Embedding | None = (
-            nn.Embedding(num_adj_degrees + 1, adj_dim) if exists(num_adj_degrees) and adj_dim > 0 else None
+            nn.Embedding(num_adj_degrees + 1, adj_dim) if (num_adj_degrees is not None) and adj_dim > 0 else None
         )
-        adj_dim = adj_dim if exists(num_adj_degrees) else 0
+        adj_dim = adj_dim if (num_adj_degrees is not None) else 0
 
         self.checkpoint: bool = checkpoint
         self.layers: nn.ModuleList = nn.ModuleList([])
@@ -535,19 +537,19 @@ class EnTransformer(BaseAtomTransformer):
         """Forward pass for the EnTransformer module."""
         b = feats.shape[0]
 
-        if exists(self.token_emb):
+        if self.token_emb is not None:
             feats = self.token_emb(feats)
 
-        if exists(self.edge_emb):
-            assert exists(edges), "edges must be passed in as (batch x seq x seq) indicating edge type"  # noqa: S101
+        if self.edge_emb is not None:
+            assert edges is not None, "edges must be passed in as (batch x seq x seq) indicating edge type"
             edges = self.edge_emb(edges)
 
-        assert not (exists(adj_mat) and (not exists(self.num_adj_degrees) or self.num_adj_degrees == 0)), (  # noqa: S101
+        assert not ((adj_mat is not None) and (not (self.num_adj_degrees is not None) or self.num_adj_degrees == 0)), (
             "num_adj_degrees must be greater than 0 if you are passing in an adjacency matrix"
         )
 
-        if exists(self.num_adj_degrees):
-            assert exists(adj_mat), "adjacency matrix must be passed in (keyword argument adj_mat)"  # noqa: S101
+        if self.num_adj_degrees is not None:
+            assert adj_mat is not None, "adjacency matrix must be passed in (keyword argument adj_mat)"
 
             if len(adj_mat.shape) == 2:  # noqa: PLR2004
                 adj_mat = repeat(adj_mat.clone(), "i j -> b i j", b=b)
@@ -562,11 +564,11 @@ class EnTransformer(BaseAtomTransformer):
                 adj_indices.masked_fill_(next_degree_mask, degree)
                 adj_mat = next_degree_adj_mat.clone()
 
-            if exists(self.adj_emb):
-                adj_emb = self.adj_emb(adj_indices)
-                edges = torch.cat((edges, adj_emb), dim=-1) if exists(edges) else adj_emb
+            if self.adj_emb is not None:
+                adj_emb: torch.Tensor = self.adj_emb(adj_indices)
+                edges = torch.cat((edges, adj_emb), dim=-1) if (edges is not None) else adj_emb
 
-        assert not (return_coor_changes and self.training), "you must be eval mode in order to return coordinates"  # noqa: S101
+        assert not (return_coor_changes and self.training), "you must be eval mode in order to return coordinates"
 
         # go through layers
 

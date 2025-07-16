@@ -6,6 +6,7 @@ class LayerNorm(torch.nn.Module):
         """Initialize the LayerNorm module."""
         super().__init__()
         self.gamma = torch.nn.Parameter(torch.ones(dim))
+        self.beta: torch.Tensor
         self.register_buffer("beta", torch.zeros(dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

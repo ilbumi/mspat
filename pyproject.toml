@@ -89,6 +89,9 @@ lint.ignore = [
 "**/__init__.py" = [
   "D104", # ignore missing docs
 ]
+"packages/pamodels/**/*.py" = [
+  "S101", # allow assertion in the models
+]
 "scripts/**/*.py" = [
   "T201",   # ignore prints
   "PGH003", # allow unspecified type ignores
