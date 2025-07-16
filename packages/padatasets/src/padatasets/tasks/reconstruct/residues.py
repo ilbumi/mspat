@@ -60,6 +60,19 @@ def construct_residue_reconstruction_data(structure: AtomArray) -> TokenTaskProt
     )
 
 
+def _get_preprocessed_structure(structure_preprocessor: BaseTransform, cif_file: Path):
+    structure = get_first_array(
+        read_cif_file(
+            cif_file,
+            model=None,
+            altloc="first",
+            extra_fields=["charge"],
+            include_bonds=True,
+        )
+    )
+    return get_first_array(structure_preprocessor.transform(structure))
+
+
 def load_cifs(
     folder: Path,
     structure_preprocessor: BaseTransform | None = None,
@@ -93,19 +106,80 @@ def load_cifs(
         )
     for cif_file in folder.glob("*.cif.gz"):
         try:
-            structure = get_first_array(
-                read_cif_file(
-                    cif_file,
-                    model=None,
-                    altloc="first",
-                    extra_fields=["charge"],
-                    include_bonds=True,
-                )
-            )
-            structure = get_first_array(structure_preprocessor.transform(structure))
+            structure = _get_preprocessed_structure(structure_preprocessor, cif_file)
         except TypeError as err:
             logger.opt(exception=err).warning(f"Failed to extract a structure {cif_file}, skipping.")
         except OSError as err:
             logger.opt(exception=err).warning(f"Failed to read {cif_file}, skipping.")
         else:
             yield construct_residue_reconstruction_data(structure)
+
+
+class ResidueReconstructionDataset(torch.utils.data.Dataset):
+    """Dataset for residue reconstruction tasks."""
+
+    def _construct_preprocessor(self, structure_preprocessor: BaseTransform | None) -> BaseTransform:
+        if structure_preprocessor is None:
+            return ComposeTransform(
+                [
+                    MaskSpans(
+                        num_spans=self.num_spans,
+                        span_length=self.span_length,
+                        random_seed=self.random_seed,
+                    ),
+                    RemoveMaskedSideChains(),
+                ]
+            )
+        return ComposeTransform(
+            [
+                structure_preprocessor,
+                MaskSpans(
+                    num_spans=self.num_spans,
+                    span_length=self.span_length,
+                    random_seed=self.random_seed,
+                ),
+                RemoveMaskedSideChains(),
+            ]
+        )
+
+    def __init__(
+        self,
+        folder: Path,
+        structure_preprocessor: BaseTransform | None = None,
+        num_spans: tuple[int, int] = (1, 6),
+        span_length: tuple[int, int] = (1, 25),
+        random_seed: int = 1337,
+    ):
+        """Initialize the ResidueReconstructionDataset.
+
+        Args:
+            folder (Path): Path to the folder containing CIF files.
+            structure_preprocessor (BaseTransform | None): Preprocessing transform for structures.
+            num_spans (tuple[int, int]): Range of number of spans to mask.
+            span_length (tuple[int, int]): Range of lengths for spans to mask.
+            random_seed (int): Random seed for reproducibility.
+
+        """
+        self.folder = folder
+        self.num_spans = num_spans
+        self.span_length = span_length
+        self.random_seed = random_seed
+        self.structure_preprocessor = self._construct_preprocessor(structure_preprocessor)
+
+        self._files: list[Path] | None = None
+
+    @property
+    def files(self) -> list[Path]:
+        """Return a list of CIF files in the dataset folder."""
+        if self._files is None:
+            self._files = sorted(self.folder.glob("*.cif.gz"))
+        return self._files
+
+    def __getitem__(self, idx: int) -> TokenTaskProteinStructure:
+        """Return a TokenTaskProteinStructure for the given index."""
+        structure = _get_preprocessed_structure(self.structure_preprocessor, self.files[idx])
+        return construct_residue_reconstruction_data(structure)
+
+    def __len__(self) -> int:
+        """Return the number of CIF files in the dataset."""
+        return len(self.files)
