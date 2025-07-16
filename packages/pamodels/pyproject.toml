@@ -10,7 +10,6 @@ requires-python = ">=3.13"
 dependencies = [
     "einops>=0.8.1",
     "padata",
-    "pytorch-ignite>=0.5.2",
     "taylor-series-linear-attention>=0.1.12",
 ]
 

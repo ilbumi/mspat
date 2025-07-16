@@ -1,10 +1,8 @@
 """En Transformer adopted from Lucidrain's repository."""
 
-from collections.abc import Callable
-from typing import Any
+from collections.abc import Sequence
 
 import torch
-import torch.nn.functional as func
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 from einx import get_at
@@ -12,36 +10,11 @@ from taylor_series_linear_attention import TaylorSeriesLinearAttn
 from torch import einsum, nn
 from torch.utils.checkpoint import checkpoint_sequential
 
-# helper functions
-
-
-def exists(val: Any) -> bool:
-    """Check if a value exists (is not None)."""
-    return val is not None
-
-
-def max_neg_value(t) -> float:
-    """Return the maximum negative value for a given tensor type."""
-    return -torch.finfo(t.dtype).max
-
-
-def default(val: Any, d: Any) -> Any:
-    """Return the default value if the given value does not exist."""
-    return val if exists(val) else d
-
-
-def l2norm(t: torch.Tensor) -> torch.Tensor:
-    """Apply L2 normalization to the last dimension of a tensor."""
-    return func.normalize(t, dim=-1)
-
-
-def small_init_(t: nn.Linear) -> None:
-    """Initialize a linear layer with small weights and zero bias."""
-    nn.init.normal_(t.weight, std=0.02)
-    nn.init.zeros_(t.bias)
-
-
-# dynamic positional bias
+from pamodels.modules.multiembeddings import MultiEmbedding
+from pamodels.modules.norm import LayerNorm
+from pamodels.structure.base import BaseAtomTransformer
+from pamodels.structure.common import Block, CoorsNorm, FeedForward, Residual
+from pamodels.utils.misc import default, exists, max_neg_value, small_init_
 
 
 class DynamicPositionBias(nn.Module):
@@ -85,78 +58,6 @@ class DynamicPositionBias(nn.Module):
         qk_pos = rearrange(qk_pos, "b 1 i j h -> b h i j")
         value_pos = rearrange(value_pos, "b 1 i j (h d) -> b h i j d", h=self.heads)
         return qk_pos, value_pos
-
-
-# classes
-
-# this follows the same strategy for normalization as done in SE3 Transformers
-# https://github.com/lucidrains/se3-transformer-pytorch/blob/main/se3_transformer_pytorch/se3_transformer_pytorch.py#L95
-
-
-class LayerNorm(nn.Module):
-    def __init__(self, dim: int) -> None:
-        """Initialize the LayerNorm module."""
-        super().__init__()
-        self.gamma = nn.Parameter(torch.ones(dim))
-        self.register_buffer("beta", torch.zeros(dim))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass for the LayerNorm module."""
-        return func.layer_norm(x, x.shape[-1:], self.gamma, self.beta)
-
-
-class CoorsNorm(nn.Module):
-    def __init__(self, eps: float = 1e-8, scale_init: float = 1.0) -> None:
-        """Initialize the CoorsNorm module."""
-        super().__init__()
-        self.eps = eps
-        scale = torch.zeros(1).fill_(scale_init)
-        self.scale = nn.Parameter(scale)
-
-    def forward(self, coors: torch.Tensor) -> torch.Tensor:
-        """Forward pass for the CoorsNorm module."""
-        norm = coors.norm(dim=-1, keepdim=True)
-        normed_coors = coors / norm.clamp(min=self.eps)
-        return normed_coors * self.scale
-
-
-class Residual(nn.Module):
-    def __init__(self, fn: Callable[..., tuple[torch.Tensor, torch.Tensor]]) -> None:
-        """Initialize the Residual module."""
-        super().__init__()
-        self.fn = fn
-
-    def forward(self, feats: torch.Tensor, coors: torch.Tensor, **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
-        """Forward pass for the Residual module."""
-        feats_out, coors_delta = self.fn(feats, coors, **kwargs)
-        return feats + feats_out, coors + coors_delta
-
-
-class GEGLU(nn.Module):
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass for the GEGLU module."""
-        x, gates = x.chunk(2, dim=-1)
-        return x * func.gelu(gates)
-
-
-class FeedForward(nn.Module):
-    def __init__(self, *, dim: int, mult: int = 4, dropout: float = 0.0) -> None:
-        """Initialize the FeedForward module."""
-        super().__init__()
-        inner_dim = int(dim * mult * 2 / 3)
-
-        self.net = nn.Sequential(
-            LayerNorm(dim),
-            nn.Linear(dim, inner_dim * 2, bias=False),
-            GEGLU(),
-            LayerNorm(inner_dim),
-            nn.Dropout(dropout),
-            nn.Linear(inner_dim, dim, bias=False),
-        )
-
-    def forward(self, feats: torch.Tensor, coors: Any) -> tuple[torch.Tensor, Any]:  # noqa: ARG002
-        """Forward pass for the FeedForward module."""
-        return self.net(feats), 0
 
 
 class EquivariantAttention(nn.Module):
@@ -540,36 +441,15 @@ class EquivariantAttention(nn.Module):
         return out, coors_out
 
 
-class Block(nn.Module):
-    def __init__(
-        self,
-        attn: Callable[..., tuple[torch.Tensor, torch.Tensor]],
-        ff: Callable[..., tuple[torch.Tensor, torch.Tensor]],
-    ) -> None:
-        """Initialize the Block module."""
-        super().__init__()
-        self.attn = attn
-        self.ff = ff
-
-    def forward(
-        self,
-        inp: torch.Tensor,
-        coor_changes: Any = None,  # noqa: ARG002
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Forward pass for the Block module."""
-        feats, coors, mask, edges, adj_mat = inp
-        feats, coors = self.attn(feats, coors, edges=edges, mask=mask, adj_mat=adj_mat)
-        feats, coors = self.ff(feats, coors)
-        return (feats, coors, mask, edges, adj_mat)
-
-
-class EnTransformer(nn.Module):
+class EnTransformer(BaseAtomTransformer):
     def __init__(
         self,
         *,
         dim: int,
         depth: int,
-        num_tokens: int | None = None,
+        num_tokens: Sequence[int]
+        | int
+        | None = None,  # number of tokens for each feature (last axis of feature matrix)
         rel_pos_emb: bool = False,
         dim_head: int = 64,
         heads: int = 8,
@@ -600,7 +480,7 @@ class EnTransformer(nn.Module):
         if only_sparse_neighbors:
             num_adj_degrees = default(num_adj_degrees, 1)
 
-        self.token_emb: nn.Embedding | None = nn.Embedding(num_tokens, dim) if exists(num_tokens) else None
+        self.token_emb: MultiEmbedding | None = MultiEmbedding(num_tokens, dim) if exists(num_tokens) else None
         self.edge_emb: nn.Embedding | None = (
             nn.Embedding(num_edge_tokens, edge_dim) if exists(num_edge_tokens) else None
         )

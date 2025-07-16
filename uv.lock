@@ -1813,7 +1813,6 @@ source = { editable = "packages/pamodels" }
 dependencies = [
     { name = "einops" },
     { name = "padata" },
-    { name = "pytorch-ignite" },
     { name = "taylor-series-linear-attention" },
 ]
 
@@ -1821,7 +1820,6 @@ dependencies = [
 requires-dist = [
     { name = "einops", specifier = ">=0.8.1" },
     { name = "padata", editable = "packages/padata" },
-    { name = "pytorch-ignite", specifier = ">=0.5.2" },
     { name = "taylor-series-linear-attention", specifier = ">=0.1.12" },
 ]
 
@@ -2190,21 +2188,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9e/de/d3144a0bceede957f961e975f3752760fbe390d57fbe194baf709d8f1f7b/python_json_logger-3.3.0.tar.gz", hash = "sha256:12b7e74b17775e7d565129296105bbe3910842d9d0eb083fc83a6a617aa8df84", size = 16642, upload-time = "2025-03-07T07:08:27.301Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/08/20/0f2523b9e50a8052bc6a8b732dfc8568abbdc42010aef03a2d750bdab3b2/python_json_logger-3.3.0-py3-none-any.whl", hash = "sha256:dd980fae8cffb24c13caf6e158d3d61c0d6d22342f932cb6e9deedab3d35eec7", size = 15163, upload-time = "2025-03-07T07:08:25.627Z" },
-]
-
-[[package]]
-name = "pytorch-ignite"
-version = "0.5.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-    { name = "torch", version = "2.7.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
-    { name = "torch", version = "2.7.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
-    { name = "torch", version = "2.7.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'linux'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/8f/74ef67efa1d70eaf6734c95406515d51d85362e2055ca9d3be3a10316a0b/pytorch_ignite-0.5.2.tar.gz", hash = "sha256:63bdbafe3fb76bf243e4c7fa4b71c89a652fece6c4c2f6e3c5b448ac74447d98", size = 236746, upload-time = "2025-03-29T13:50:14.267Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/89/91d28b929f75c1205a8a37224fd25e7c97e295a56c8308ed47e9763fe4f4/pytorch_ignite-0.5.2-py3-none-any.whl", hash = "sha256:ae0843e7b45416041cc57700dcbdfae30ae6432f2dc5bc20dfbfe1dae3414c91", size = 343180, upload-time = "2025-03-29T13:50:06.905Z" },
 ]
 
 [[package]]

@@ -63,7 +63,7 @@ python_version = "3.12"
 warn_unused_configs = true
 ignore_missing_imports = true
 check_untyped_defs = true
-exclude = ["tests", "packages/pamodels/src/pamodels/structure/en_transformer.py"]
+exclude = ["tests"]
 
 [tool.ruff]
 line-length = 120
