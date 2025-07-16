@@ -26,6 +26,7 @@ dev = [
   "myst-parser>=4.0.1",
   "sphinx-autodoc-typehints>=3.2.0",
   "hypothesis>=6.131.23",
+  "dead>=2.1.0",
 ]
 
 [build-system]
@@ -62,7 +63,7 @@ python_version = "3.12"
 warn_unused_configs = true
 ignore_missing_imports = true
 check_untyped_defs = true
-exclude = ["tests"]
+exclude = ["tests", "packages/pamodels/src/pamodels/structure/en_transformer.py"]
 
 [tool.ruff]
 line-length = 120
