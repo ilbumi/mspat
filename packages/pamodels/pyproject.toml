@@ -1,0 +1,28 @@
+[project]
+name = "pamodels"
+dynamic = ["version"]
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Ilia Bushmakin", email = "im.bushmakin@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "einops>=0.8.1",
+    "padata",
+    "pytorch-ignite>=0.5.2",
+    "taylor-series-linear-attention>=0.1.12",
+]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+padata = { workspace = true }
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
