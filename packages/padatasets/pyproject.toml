@@ -1,6 +1,6 @@
 [project]
 name = "padatasets"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Datasets for protein structure prediction and analysis"
 readme = "README.md"
 authors = [
@@ -13,8 +13,14 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
 padata = { workspace = true }
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"

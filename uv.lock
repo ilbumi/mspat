@@ -215,7 +215,6 @@ wheels = [
 
 [[package]]
 name = "biocontacts"
-version = "0.1.0"
 source = { editable = "packages/biocontacts" }
 dependencies = [
     { name = "padata" },
@@ -1294,6 +1293,7 @@ dependencies = [
     { name = "biocontacts" },
     { name = "padata" },
     { name = "padatasets" },
+    { name = "pamodels" },
 ]
 
 [package.dev-dependencies]
@@ -1318,6 +1318,7 @@ requires-dist = [
     { name = "biocontacts", editable = "packages/biocontacts" },
     { name = "padata", editable = "packages/padata" },
     { name = "padatasets", editable = "packages/padatasets" },
+    { name = "pamodels", editable = "packages/pamodels" },
 ]
 
 [package.metadata.requires-dev]
@@ -1715,7 +1716,6 @@ wheels = [
 
 [[package]]
 name = "osif"
-version = "0.1.0"
 source = { editable = "packages/osif" }
 dependencies = [
     { name = "lightning" },
@@ -1781,7 +1781,6 @@ requires-dist = [
 
 [[package]]
 name = "padatasets"
-version = "0.1.0"
 source = { editable = "packages/padatasets" }
 dependencies = [
     { name = "loguru" },
