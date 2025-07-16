@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Ilia Bushmakin", email = "im.bushmakin@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "loguru>=0.7.3",
     "padata",

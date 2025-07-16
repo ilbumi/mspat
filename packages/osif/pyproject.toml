@@ -3,7 +3,7 @@ name = "osif"
 dynamic = ["version"]
 description = "OSIF: Old Simple models for Inverse Foldings"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "lightning>=2.5.2",
     "omegaconf>=2.3.0",
